@@ -11,6 +11,14 @@ App = {
     },
 
     loadWeb3: async () => {
+        // if (typeof web3 !== 'undefined') {
+        //     App.web3Provider = web3.currentProvider;
+        //     window.web3 = new Web3(web3.currentProvider);
+        // } else {
+        //     // If no injected web3 instance is detected, fallback to Ganache.
+        //     App.web3Provider = new web3.providers.HttpProvider('http://127.0.0.1:8545');
+        //     window.web3 = new Web3(App.web3Provider);
+        // }
         if (window.ethereum) {
             window.web3 = new Web3(window.ethereum)
             await window.ethereum.enable()
@@ -25,17 +33,24 @@ App = {
     loadAccount: async () => {
         const web3 = window.web3
         const accounts = await web3.eth.getAccounts()
-        App.account = accounts[0]
+        web3.eth.defaultAccount = accounts[0]
+        App.account = web3.eth.defaultAccount
 
     },
     loadContract: async () => {
         const todoList = await $.getJSON('TodoList.json');
-
+        console.log('contracts:', App.contracts);
         App.contracts.TodoList = TruffleContract(todoList);
         App.contracts.TodoList.setProvider(window.ethereum);
+        App.contracts.TodoList.defaults({
+            from: App.account
+        })
         App.todoList = await App.contracts.TodoList.deployed();
+        console.log('contracts:', App.contracts);
+
         console.log('app todolist: ', App.todoList);
     },
+
     render: async () => {
         if (App.loading) {
             return
@@ -46,6 +61,13 @@ App = {
         await App.renderTasks()
         App.setLoading(false)
     },
+    createTask: async () => {
+        App.setLoading(true)
+        const content = $('#newTask').val()
+        await App.todoList.createTask(content)
+        window.location.reload
+    },
+
     setLoading: (boolean) => {
         App.loading = boolean;
         const loader = $('#loader');
@@ -82,8 +104,6 @@ App = {
             }
             $newTaskTemplate.show();
         }
-
-
     }
 }
 
